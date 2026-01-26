@@ -4,7 +4,9 @@ A Portfolio Project i will be building live on my YouTube....!
 
 ## Development
 
-`npm run dev`
+```
+npm run dev
+```
 
 ## Production
 
