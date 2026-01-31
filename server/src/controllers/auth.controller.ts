@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { IUser } from "../types/user.types";
 import { User } from "../models/user.model";
+import { comparePassword, hashPassword } from "../utils/bcrypt";
 
 export const signup = async (req: Request<{}, {}, IUser>, res: Response) => {
   const { name, email, password } = req.body;
@@ -19,11 +20,14 @@ export const signup = async (req: Request<{}, {}, IUser>, res: Response) => {
     });
   }
 
+  const hashedPassword = await hashPassword(password);
+
   const newUser = new User({
     name,
     email,
-    password,
+    password: hashedPassword,
   });
+
   const user = await newUser.save();
 
   return res.status(200).json({
@@ -51,8 +55,11 @@ export const login = async (
       message: "Wrong Crendentials",
     });
   }
+  const hashedPassword = user?.password;
 
-  if (user?.password === password) {
+  const isPasswordMatch = await comparePassword(password, hashedPassword);
+
+  if (isPasswordMatch) {
     return res.status(200).json({
       message: "Logged in Successfully.",
       user,
