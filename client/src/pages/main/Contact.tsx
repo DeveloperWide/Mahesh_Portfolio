@@ -32,7 +32,7 @@ const Contact = () => {
           </div>
 
           <textarea
-            rows="5"
+            rows={5}
             placeholder="Your Message"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-500"
           ></textarea>

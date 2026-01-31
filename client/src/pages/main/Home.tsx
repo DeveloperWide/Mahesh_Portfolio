@@ -1,7 +1,5 @@
 import { Link } from "react-router";
-import Image1 from "../assets/Image_1.webp";
-/* import Image2 from "../assets/Image_2.webp";
-import Image3 from "../assets/Image_3.webp"; */
+import Image1 from "../../assets/Image_1.webp";
 
 const Home = () => {
   return (
@@ -42,33 +40,12 @@ const Home = () => {
         </div>
 
         {/* Right Content */}
-        {/* className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-lg" */}
         <div className="">
           <img
             src={`${Image1}`}
             alt="Mahesh Rana"
             className="w-100 h-100 object-cover object-center rounded-[25%_10%]"
           />
-          {/* <h3 className="text-xl font-semibold mb-6">What I Do</h3>
-
-          <ul className="space-y-4 text-gray-400">
-            <li className="flex items-start gap-3">
-              <span className="text-indigo-500">▹</span>
-              Full-stack MERN application development
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-indigo-500">▹</span>
-              REST APIs with Node.js, Express & TypeScript
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-indigo-500">▹</span>
-              MongoDB schema design & performance optimization
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-indigo-500">▹</span>
-              Clean UI with Tailwind CSS & React
-            </li>
-          </ul> */}
         </div>
       </div>
     </section>
