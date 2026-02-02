@@ -40,7 +40,7 @@ const Home = () => {
         </div>
 
         {/* Right Content */}
-        <div className="">
+        <div>
           <img
             src={`${Image1}`}
             alt="Mahesh Rana"
