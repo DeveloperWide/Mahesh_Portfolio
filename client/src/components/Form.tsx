@@ -9,6 +9,9 @@ type FormProps = { type: "login" } | { type: "signup" };
 
 const Form = (props: FormProps) => {
   const [formData, setFormData] = useState<FormData>(getObj(props.type));
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const onChangeHandler = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -21,27 +24,38 @@ const Form = (props: FormProps) => {
 
   const onSubmitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
 
-    if (props.type == "signup") {
-      const res = await instance.post("/auth/signup", formData);
+    try {
+      if (props.type == "signup") {
+        const res = await instance.post("/auth/signup", formData);
 
-      if (res.data.user) {
-        console.log(res.data.user);
-        setFormData({
-          name: "",
-          email: "",
-          password: "",
-        });
+        if (res.data.user) {
+          setSuccess("Account created. You’re logged in.");
+          setFormData({
+            name: "",
+            email: "",
+            password: "",
+          });
+        }
+      } else {
+        const res = await instance.post("/auth/login", formData);
+        if (res.data.user) {
+          setSuccess("Logged in successfully.");
+          setFormData({
+            email: "",
+            password: "",
+          });
+        }
       }
-    } else {
-      const res = await instance.post("/auth/login", formData);
-      if (res.data.user) {
-        console.log(res.data.user);
-        setFormData({
-          email: "",
-          password: "",
-        });
-      }
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || err?.message || "Something went wrong";
+      setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,6 +67,18 @@ const Form = (props: FormProps) => {
       <h1 className="text-3xl font-semibold text-center text-gray-800">
         {props.type === "signup" ? "Create Account" : "Welcome Back"}
       </h1>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {success ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {success}
+        </div>
+      ) : null}
 
       {props.type === "signup" && (
         <TextField
@@ -103,9 +129,14 @@ const Form = (props: FormProps) => {
         variant="contained"
         size="large"
         type="submit"
+        disabled={loading}
         className="w-full py-3! rounded-xl! font-semibold!"
       >
-        {props.type === "signup" ? "Sign Up" : "Login"}
+        {loading
+          ? "Please wait…"
+          : props.type === "signup"
+            ? "Sign Up"
+            : "Login"}
       </Button>
     </form>
   );

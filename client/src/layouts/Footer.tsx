@@ -67,7 +67,7 @@ const Footer = () => {
             React & Tailwind.
           </p>
 
-          <div className="flex gap-5">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             <Link
               to="/privacy"
               className="hover:text-amber-500 transition-colors"
@@ -79,6 +79,18 @@ const Footer = () => {
               className="hover:text-amber-500 transition-colors"
             >
               Terms
+            </Link>
+            <Link
+              to="/refunds"
+              className="hover:text-amber-500 transition-colors"
+            >
+              Refunds
+            </Link>
+            <Link
+              to="/delivery"
+              className="hover:text-amber-500 transition-colors"
+            >
+              Delivery
             </Link>
           </div>
         </div>
