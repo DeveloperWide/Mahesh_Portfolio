@@ -1,6 +1,10 @@
 import type { Request, Response } from "express";
 import { ContactMessage } from "../models/contactMessage.model";
-import { safeSendAdminEmail, safeSendEmail } from "../utils/email";
+import {
+  safeSendAdminEmail,
+  safeSendEmail,
+  shouldSendCustomerEmails,
+} from "../utils/email";
 import { buildContactAdminEmail, buildContactCustomerEmail } from "../utils/emailTemplates";
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -35,10 +39,12 @@ export const submitContactMessage = async (req: Request, res: Response) => {
   });
 
   void safeSendAdminEmail(buildContactAdminEmail(doc as any), "contact_admin");
-  void safeSendEmail(
-    { to: doc.email, ...buildContactCustomerEmail(doc as any) },
-    "contact_customer",
-  );
+  if (shouldSendCustomerEmails()) {
+    void safeSendEmail(
+      { to: doc.email, ...buildContactCustomerEmail(doc as any) },
+      "contact_customer",
+    );
+  }
 
   return res.status(201).json({ ok: true });
 };

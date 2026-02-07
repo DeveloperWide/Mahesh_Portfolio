@@ -18,18 +18,26 @@ import Refunds from "./pages/legal/Refunds";
 import Delivery from "./pages/legal/Delivery";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminMessages from "./pages/admin/AdminMessages";
+import AdminEmail from "./pages/admin/AdminEmail";
 import AdminProjects from "./pages/admin/AdminProjects";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminCalls from "./pages/admin/AdminCalls";
+import AdminRefunds from "./pages/admin/AdminRefunds";
 
 const App = () => {
   return (
     <Routes>
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="projects" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="messages" element={<AdminMessages />} />
+        <Route path="email" element={<AdminEmail />} />
         <Route path="projects" element={<AdminProjects />} />
         <Route path="calls" element={<AdminCalls />} />
+        <Route path="refunds" element={<AdminRefunds />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 

@@ -46,6 +46,7 @@ Copy keys from `server/.env.example` and set production values.
 **Optional**
 
 - `EMAIL_FROM`, `EMAIL_SUBJECT_PREFIX`
+- `EMAIL_SEND_CUSTOMERS` (set to `false` to disable customer emails)
 - `CALL_PRICE_30`, `CALL_PRICE_60`, `CALL_CURRENCY`
 - `CALL_REQUIRE_PAYMENT` (defaults to `true` if Razorpay keys exist)
 

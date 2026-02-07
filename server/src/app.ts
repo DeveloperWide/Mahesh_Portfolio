@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.route";
 import callsRoutes from "./routes/calls.route";
 import contactRoutes from "./routes/contact.route";
 import projectsRoutes from "./routes/projects.route";
+import refundsRoutes from "./routes/refunds.route";
 
 const app = express();
 app.use(
@@ -26,5 +27,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/calls", callsRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/projects", projectsRoutes);
+app.use("/api/refunds", refundsRoutes);
 
 export default app;

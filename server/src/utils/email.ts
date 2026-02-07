@@ -35,6 +35,9 @@ const parseBool = (value: string | undefined, fallback: boolean) => {
   return fallback;
 };
 
+export const shouldSendCustomerEmails = () =>
+  parseBool(process.env.EMAIL_SEND_CUSTOMERS, true);
+
 const getAdminEmailFallback = () =>
   (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 

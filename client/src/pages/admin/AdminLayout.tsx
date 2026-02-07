@@ -40,6 +40,24 @@ const AdminLayout = () => {
         <aside className="border border-gray-200 bg-white rounded-2xl p-4 h-fit">
           <nav className="flex flex-col gap-2">
             <Link
+              to="/admin/dashboard"
+              className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/admin/messages"
+              className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Messages
+            </Link>
+            <Link
+              to="/admin/email"
+              className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Email
+            </Link>
+            <Link
               to="/admin/projects"
               className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
             >
@@ -50,6 +68,12 @@ const AdminLayout = () => {
               className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
             >
               Calls
+            </Link>
+            <Link
+              to="/admin/refunds"
+              className="px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              Refunds
             </Link>
             <Link
               to="/admin/settings"

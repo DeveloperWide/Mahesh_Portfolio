@@ -15,10 +15,15 @@ import {
 import {
   createRazorpayOrder,
   getRazorpayPublicConfig,
+  getRazorpayPayment,
   razorpayIsConfigured,
   verifyRazorpaySignature,
 } from "../utils/razorpay";
-import { safeSendAdminEmail, safeSendEmail } from "../utils/email";
+import {
+  safeSendAdminEmail,
+  safeSendEmail,
+  shouldSendCustomerEmails,
+} from "../utils/email";
 import {
   buildCallBookingAdminEmail,
   buildCallBookingCustomerEmail,
@@ -265,10 +270,12 @@ export const createBooking = async (req: Request, res: Response) => {
       buildCallBookingAdminEmail(booking as any),
       "call_booking_free_admin",
     );
-    void safeSendEmail(
-      { to: booking.email, ...buildCallBookingCustomerEmail(booking as any) },
-      "call_booking_free_customer",
-    );
+    if (shouldSendCustomerEmails()) {
+      void safeSendEmail(
+        { to: booking.email, ...buildCallBookingCustomerEmail(booking as any) },
+        "call_booking_free_customer",
+      );
+    }
     return res.status(201).json({ booking });
   } catch (err) {
     await CallSlotLock.deleteMany({ bookingId, kind: "booking" });
@@ -407,6 +414,22 @@ export const verifyCheckout = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Invalid payment signature" });
   }
 
+  // Defense in depth: confirm the payment is real and matches our expected order/amount.
+  const payment = await getRazorpayPayment(razorpayPaymentId);
+  if (payment.order_id && payment.order_id !== razorpayOrderId) {
+    return res.status(400).json({ message: "Payment/order mismatch" });
+  }
+  if (payment.amount !== checkout.amount || payment.currency !== checkout.currency) {
+    return res.status(400).json({ message: "Payment amount mismatch" });
+  }
+  const captured =
+    payment.captured === true || String(payment.status).toLowerCase() === "captured";
+  if (!captured) {
+    return res.status(400).json({
+      message: `Payment is not captured (status: ${payment.status})`,
+    });
+  }
+
   const existing = await CallBooking.findOne({
     razorpayOrderId,
     razorpayPaymentId,
@@ -518,10 +541,12 @@ export const verifyCheckout = async (req: Request, res: Response) => {
     buildCallBookingAdminEmail(booking as any),
     "call_booking_paid_admin",
   );
-  void safeSendEmail(
-    { to: booking.email, ...buildCallBookingCustomerEmail(booking as any) },
-    "call_booking_paid_customer",
-  );
+  if (shouldSendCustomerEmails()) {
+    void safeSendEmail(
+      { to: booking.email, ...buildCallBookingCustomerEmail(booking as any) },
+      "call_booking_paid_customer",
+    );
+  }
   if (!slotLocked && slotLockError === "conflict") {
     return res.status(200).json({
       booking,
