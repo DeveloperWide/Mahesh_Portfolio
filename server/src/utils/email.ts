@@ -2,7 +2,7 @@ import os from "os";
 import net from "net";
 import tls from "tls";
 
-export type EmailProvider = "log" | "smtp";
+export type EmailProvider = "log" | "smtp" | "resend";
 
 export type EmailConfig = {
   provider: EmailProvider;
@@ -15,6 +15,9 @@ export type EmailConfig = {
     secure: boolean;
     user: string;
     pass: string;
+  };
+  resend?: {
+    apiKey: string;
   };
 };
 
@@ -42,12 +45,20 @@ export const getEmailConfig = (): EmailConfig => {
   const primaryTo = splitCsv(process.env.EMAIL_TO || "");
   const to = primaryTo.length ? primaryTo : splitCsv(getAdminEmailFallback());
 
+  const fromExplicit = (process.env.EMAIL_FROM || "").trim();
   const from =
-    (process.env.EMAIL_FROM || process.env.SMTP_USER || "").trim() || "";
+    fromExplicit ||
+    (provider === "smtp" ? (process.env.SMTP_USER || "").trim() : "") ||
+    "";
 
   const subjectPrefix = (process.env.EMAIL_SUBJECT_PREFIX || "Portfolio")
     .trim()
     .replace(/\s+/g, " ");
+
+  if (provider === "resend") {
+    const apiKey = (process.env.RESEND_API_KEY || "").trim();
+    return { provider, to, from, subjectPrefix, resend: { apiKey } };
+  }
 
   if (provider !== "smtp") {
     return { provider, to, from, subjectPrefix };
@@ -186,6 +197,33 @@ const upgradeToStartTls = async (socket: net.Socket, host: string) => {
     );
     s.once("error", reject);
   });
+};
+
+const resendSendMail = async (
+  cfg: { apiKey: string; from: string; to: string[] },
+  payload: { subject: string; text: string; html?: string },
+) => {
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: cfg.from,
+      to: cfg.to,
+      subject: payload.subject,
+      text: payload.text,
+      ...(payload.html ? { html: payload.html } : {}),
+    }),
+  });
+
+  if (resp.ok) return;
+
+  const body = await resp.text().catch(() => "");
+  throw new Error(
+    `Resend API error (${resp.status}): ${body || resp.statusText}`,
+  );
 };
 
 const smtpSendMail = async (cfg: Required<EmailConfig>["smtp"] & { from: string; to: string[] }, payload: {
@@ -367,6 +405,17 @@ export const sendEmail = async (payload: {
     console.log("[Email:log] to=" + to.join(", "));
     console.log("[Email:log] subject=" + subject);
     console.log(payload.text);
+    return;
+  }
+
+  if (cfg.provider === "resend") {
+    const apiKey = cfg.resend?.apiKey || "";
+    if (!apiKey) throw new Error("RESEND_API_KEY is required.");
+    if (!cfg.from) throw new Error("EMAIL_FROM is required.");
+    await resendSendMail(
+      { apiKey, from: cfg.from, to },
+      { subject, text: payload.text, html: payload.html },
+    );
     return;
   }
 
