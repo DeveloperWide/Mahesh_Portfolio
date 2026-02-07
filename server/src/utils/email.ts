@@ -1,4 +1,5 @@
 import os from "os";
+import net from "net";
 import tls from "tls";
 
 export type EmailProvider = "log" | "smtp";
@@ -145,16 +146,10 @@ const buildMimeMessage = (payload: {
   return `${headers.join("\r\n")}\r\n\r\n${parts.join("\r\n")}`;
 };
 
-const smtpSendMail = async (cfg: Required<EmailConfig>["smtp"] & { from: string; to: string[] }, payload: {
-  subject: string;
-  text: string;
-  html?: string;
-}) => {
-  if (!cfg.secure) {
-    throw new Error("Only SMTP_SECURE=true is supported. Use port 465 (SMTPS).");
-  }
+type SmtpSocket = net.Socket | tls.TLSSocket;
 
-  const socket = await new Promise<tls.TLSSocket>((resolve, reject) => {
+const connectImplicitTls = async (cfg: { host: string; port: number }) => {
+  return await new Promise<tls.TLSSocket>((resolve, reject) => {
     const s = tls.connect(
       {
         host: cfg.host,
@@ -165,18 +160,59 @@ const smtpSendMail = async (cfg: Required<EmailConfig>["smtp"] & { from: string;
     );
     s.once("error", reject);
   });
+};
+
+const connectPlain = async (cfg: { host: string; port: number }) => {
+  return await new Promise<net.Socket>((resolve, reject) => {
+    const s = net.connect(
+      {
+        host: cfg.host,
+        port: cfg.port,
+      },
+      () => resolve(s),
+    );
+    s.once("error", reject);
+  });
+};
+
+const upgradeToStartTls = async (socket: net.Socket, host: string) => {
+  return await new Promise<tls.TLSSocket>((resolve, reject) => {
+    const s = tls.connect(
+      {
+        socket,
+        servername: host,
+      },
+      () => resolve(s),
+    );
+    s.once("error", reject);
+  });
+};
+
+const smtpSendMail = async (cfg: Required<EmailConfig>["smtp"] & { from: string; to: string[] }, payload: {
+  subject: string;
+  text: string;
+  html?: string;
+}) => {
+  let socket: SmtpSocket = cfg.secure
+    ? await connectImplicitTls(cfg)
+    : await connectPlain(cfg);
 
   let buffer = "";
   const queue: string[] = [];
 
-  socket.on("data", (chunk) => {
+  const onChunk = (chunk: Buffer) => {
     buffer += chunk.toString("utf8");
     const parts = buffer.split("\r\n");
     buffer = parts.pop() ?? "";
     for (const line of parts) {
       if (line !== "") queue.push(line);
     }
-  });
+  };
+
+  const attach = (s: SmtpSocket) => s.on("data", onChunk);
+  const detach = (s: SmtpSocket) => s.off("data", onChunk);
+
+  attach(socket);
 
   const waitForMore = () =>
     new Promise<void>((resolve, reject) => {
@@ -239,6 +275,19 @@ const smtpSendMail = async (cfg: Required<EmailConfig>["smtp"] & { from: string;
 
     const hostname = os.hostname() || "localhost";
     expect(await sendCmd(`EHLO ${hostname}`), [250]);
+
+    if (!cfg.secure) {
+      // STARTTLS (explicit TLS) — common on port 587.
+      expect(await sendCmd("STARTTLS"), [220]);
+
+      const plain = socket as net.Socket;
+      detach(plain);
+      socket = await upgradeToStartTls(plain, cfg.host);
+      attach(socket);
+
+      // RFC 3207: must re-issue EHLO after STARTTLS.
+      expect(await sendCmd(`EHLO ${hostname}`), [250]);
+    }
 
     expect(await sendCmd("AUTH LOGIN"), [334]);
     expect(await sendCmd(base64(cfg.user)), [334]);
