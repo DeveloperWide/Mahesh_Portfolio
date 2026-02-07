@@ -5,6 +5,7 @@ import { CallCheckout } from "../models/callCheckout.model";
 import { CallSlotLock } from "../models/callSlotLock.model";
 import {
   ceilToStepLocal,
+  formatLocalDateYMD,
   getCallConfig,
   getNightWindowForStartDate,
   isAllowedDuration,
@@ -161,8 +162,20 @@ const validateCallRequest = (payload: {
   }
 
   const now = new Date();
+  if (!config.allowSameDay) {
+    const nowYmd = formatLocalDateYMD(startOfLocalDay(now));
+    const startYmd = formatLocalDateYMD(startOfLocalDay(start));
+    if (nowYmd === startYmd) {
+      return {
+        ok: false as const,
+        message: "Same-day call bookings are not available. Please pick a future date.",
+      };
+    }
+  }
+
+  const leadMinutes = Math.max(config.bufferMinutes, config.minNoticeMinutes);
   const earliest = ceilToStepLocal(
-    new Date(now.getTime() + config.bufferMinutes * 60_000),
+    new Date(now.getTime() + leadMinutes * 60_000),
     config.stepMinutes,
   );
   if (start.getTime() < earliest.getTime()) {

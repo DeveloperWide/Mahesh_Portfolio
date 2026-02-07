@@ -49,6 +49,9 @@ Copy keys from `server/.env.example` and set production values.
 - `EMAIL_SEND_CUSTOMERS` (set to `false` to disable customer emails)
 - `CALL_PRICE_30`, `CALL_PRICE_60`, `CALL_CURRENCY`
 - `CALL_REQUIRE_PAYMENT` (defaults to `true` if Razorpay keys exist)
+- `CALL_MIN_NOTICE_MINUTES` (minimum lead time before a call can be booked)
+- `CALL_ALLOW_SAME_DAY` (set to `false` to disable same-day call bookings)
+- `TZ` (recommended, e.g. `Asia/Kolkata`, so call-slot dates/times match your local timezone)
 
 Notes:
 

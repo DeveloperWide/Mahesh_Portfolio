@@ -6,6 +6,8 @@ export type CallConfig = {
   availabilityMode: CallAvailabilityMode;
   stepMinutes: number;
   bufferMinutes: number;
+  minNoticeMinutes: number;
+  allowSameDay: boolean;
   autoDays: number;
   windowStartHour: number;
   windowEndHour: number;
@@ -29,6 +31,14 @@ const clampInt = (
   return Math.min(max, Math.max(min, raw));
 };
 
+const parseBool = (value: string | undefined, fallback: boolean) => {
+  const v = (value ?? "").trim().toLowerCase();
+  if (v === "") return fallback;
+  if (v === "true" || v === "1" || v === "yes") return true;
+  if (v === "false" || v === "0" || v === "no") return false;
+  return fallback;
+};
+
 export const getCallConfig = (): CallConfig => {
   const availabilityMode =
     (process.env.CALL_AVAILABILITY_MODE as CallAvailabilityMode | undefined) ??
@@ -43,6 +53,14 @@ export const getCallConfig = (): CallConfig => {
     min: 0,
     max: 240,
   });
+
+  // Minimum notice before a call can be booked (in minutes). Defaults to 7 hours.
+  const minNoticeMinutes = clampInt(process.env.CALL_MIN_NOTICE_MINUTES, 420, {
+    min: 0,
+    max: 7 * 24 * 60,
+  });
+
+  const allowSameDay = parseBool(process.env.CALL_ALLOW_SAME_DAY, false);
 
   const autoDays = clampInt(process.env.CALL_AUTO_DAYS, 14, {
     min: 1,
@@ -85,6 +103,8 @@ export const getCallConfig = (): CallConfig => {
     availabilityMode,
     stepMinutes,
     bufferMinutes,
+    minNoticeMinutes,
+    allowSameDay,
     autoDays,
     windowStartHour,
     windowEndHour,
@@ -104,6 +124,9 @@ export const formatLocalDateYMD = (date: Date) => {
     date.getDate(),
   )}`;
 };
+
+const localDayKey = (date: Date) =>
+  date.getFullYear() * 10_000 + (date.getMonth() + 1) * 100 + date.getDate();
 
 export const startOfLocalDay = (date: Date) => {
   const d = new Date(date);
@@ -226,11 +249,36 @@ export const listAvailableSlots = async (opts: {
   }
 
   const minStart = ceilToStepLocal(
-    addMinutes(now, config.bufferMinutes),
+    addMinutes(now, Math.max(config.bufferMinutes, config.minNoticeMinutes)),
     config.stepMinutes,
   );
+  const nowYmd = formatLocalDateYMD(now);
+
+  const outputStartDay = startOfLocalDay(now);
+  if (!config.allowSameDay) {
+    outputStartDay.setDate(outputStartDay.getDate() + 1);
+  }
+  const outputEndDay = startOfLocalDay(rangeEnd);
 
   const result: AvailabilityDay[] = [];
+  const byDate = new Map<string, AvailabilityDay>();
+  for (
+    const d = new Date(outputStartDay);
+    d.getTime() <= outputEndDay.getTime();
+    d.setDate(d.getDate() + 1)
+  ) {
+    const date = formatLocalDateYMD(d);
+    const next = new Date(d);
+    next.setDate(next.getDate() + 1);
+    const entry: AvailabilityDay = {
+      date,
+      windowStartAt: d.toISOString(),
+      windowEndAt: next.toISOString(),
+      slots: [],
+    };
+    result.push(entry);
+    byDate.set(date, entry);
+  }
 
   for (let i = 0; i < days; i += 1) {
     const dayStart = new Date(baseDay);
@@ -246,25 +294,21 @@ export const listAvailableSlots = async (opts: {
       ? minStart
       : windowStart;
 
-    const slots: string[] = [];
     for (
       let t = new Date(effectiveStart);
       addMinutes(t, durationMinutes).getTime() <= windowEnd.getTime();
       t = addMinutes(t, config.stepMinutes)
     ) {
+      if (!config.allowSameDay && formatLocalDateYMD(t) === nowYmd) continue;
+      const dateKey = formatLocalDateYMD(t);
+      const day = byDate.get(dateKey);
+      if (!day) continue;
       const blocks = requiredLockBlockStarts(t, durationMinutes, config.stepMinutes);
       if (blocks.length === 0) continue;
       const ok = blocks.every((b) => !locked.has(b.getTime()));
       if (!ok) continue;
-      slots.push(t.toISOString());
+      day.slots.push(t.toISOString());
     }
-
-    result.push({
-      date: formatLocalDateYMD(windowStart),
-      windowStartAt: windowStart.toISOString(),
-      windowEndAt: windowEnd.toISOString(),
-      slots,
-    });
   }
 
   return { config, days: result };
